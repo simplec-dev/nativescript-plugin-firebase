@@ -5,6 +5,7 @@ import android.util.Log;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import com.simplec.telehealth.notify.fcm.NotifyFirebaseMessagingService;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -13,34 +14,41 @@ import java.util.Map;
 /**
  * This class takes care of notifications received while the app is in the foreground.
  */
-public class MyFirebaseMessagingService extends FirebaseMessagingService {
+//public class MyFirebaseMessagingService extends FirebaseMessagingService {
+public class MyFirebaseMessagingService extends NotifyFirebaseMessagingService {
   static final String TAG = "FirebasePlugin";
 
   static boolean isActive = false;
 
   @Override
   public void onMessageReceived(RemoteMessage remoteMessage) {
-    try {
-      final JSONObject json = new JSONObject()
-        .put("foreground", isActive)
-        .put("from", remoteMessage.getFrom());
 
-      final RemoteMessage.Notification not = remoteMessage.getNotification();
-      if (not != null) {
-        json.put("title", not.getTitle())
-          .put("body", not.getBody());
+    // no callback means it's in terminated state, so handle directly via telehealth
+    if (!FirebasePlugin.hasNotificationCallback()) {
+      super.onMessageReceived(remoteMessage);
+    } else {
+      try {
+        final JSONObject json = new JSONObject()
+                .put("foreground", isActive)
+                .put("from", remoteMessage.getFrom());
+
+        final RemoteMessage.Notification not = remoteMessage.getNotification();
+        if (not != null) {
+          json.put("title", not.getTitle())
+                  .put("body", not.getBody());
+        }
+
+        final Map<String, String> data = remoteMessage.getData();
+        final JSONObject data_json = new JSONObject();
+        for (Map.Entry<String, String> stringStringEntry : data.entrySet()) {
+          data_json.put(stringStringEntry.getKey(), stringStringEntry.getValue());
+        }
+        json.put("data", data_json);
+
+        FirebasePlugin.executeOnNotificationReceivedCallback(json.toString());
+      } catch (JSONException e) {
+        e.printStackTrace();
       }
-
-      final Map<String, String> data = remoteMessage.getData();
-      final JSONObject data_json = new JSONObject();
-      for (Map.Entry<String, String> stringStringEntry : data.entrySet()) {
-        data_json.put(stringStringEntry.getKey(), stringStringEntry.getValue());
-      }
-      json.put("data", data_json);
-
-      FirebasePlugin.executeOnNotificationReceivedCallback(json.toString());
-    } catch (JSONException e) {
-      e.printStackTrace();
     }
   }
 

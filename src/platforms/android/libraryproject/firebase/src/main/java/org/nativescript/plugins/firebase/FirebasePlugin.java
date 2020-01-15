@@ -16,6 +16,10 @@ public class FirebasePlugin {
   private static FirebasePluginListener onPushTokenReceivedCallback;
   private static FirebasePluginListener onNotificationReceivedCallback;
 
+  public static boolean hasNotificationCallback() {
+    return (null != onNotificationReceivedCallback);
+  }
+
   public static void registerForPushNotifications(final String senderId) {
     new Thread() {
       public void run() {
