@@ -253,7 +253,6 @@ function promptQuestionsResult(result) {
     writePodFile(result);
     writeGoogleServiceCopyHook();
     writeBuildscriptHookForCrashlytics(isSelected(result.crashlytics));
-    writeBuildscriptHookForFirestore(isSelected(result.firestore));
     activateIOSCrashlyticsFramework(isSelected(result.crashlytics));
     activateIOSMLKitCameraFramework(isSelected(result.ml_kit));
   }
@@ -357,7 +356,7 @@ function writePodFile(result) {
 // The MLVision pod requires a minimum of iOS 9, otherwise the build will fail
 (isPresent(result.ml_kit) ? `` : `#`) + `platform :ios, '9.0'
 
-` + (!isSelected(result.external_push_client_only) ? `` : `#`) + `pod 'Firebase/Core', '~>6.13.0'
+` + (!isSelected(result.external_push_client_only) ? `` : `#`) + `pod 'Firebase/Core', '~>6.16.0'
 
 # Analytics
 ` + (isSelected(result.analytics) || (!isSelected(result.external_push_client_only) && !isPresent(result.analytics)) ? `` : `#`) + `pod 'Firebase/Analytics'
@@ -395,7 +394,7 @@ end`) + `
 ` + (isSelected(result.messaging) ? `` : `#`) + `pod 'Firebase/Messaging'
 
 # Firebase In-App Messaging
-` + (isSelected(result.in_app_messaging) ? `` : `#`) + `pod 'Firebase/InAppMessagingDisplay'
+` + (isSelected(result.in_app_messaging) ? `` : `#`) + `pod 'Firebase/InAppMessaging'
 
 # Firebase Cloud Storage
 ` + (isSelected(result.storage) ? `` : `#`) + `pod 'Firebase/Storage'
@@ -598,98 +597,6 @@ module.exports = function($logger, $projectData, hookArgs) {
 }
 
 /**
- * Create the iOS build script for setting the workspace to the legacy build system (for now).
- *
- * @param {any} enable is Firestore enabled
- */
-function writeBuildscriptHookForFirestore(enable) {
-  var scriptPath = path.join(appRoot, "hooks", "after-prepare", "firebase-firestore-buildscript.js");
-
-  if (!enable) {
-    if (fs.existsSync(scriptPath)) {
-      fs.unlinkSync(scriptPath);
-    }
-    return
-  }
-
-  console.log("Install Firestore buildscript hook.");
-  try {
-    var scriptContent =
-        `const fs = require('fs-extra');
-const path = require('path');
-
-module.exports = function($logger, $projectData, hookArgs) {
-  const platformFromHookArgs = hookArgs && (hookArgs.platform || (hookArgs.prepareData && hookArgs.prepareData.platform));
-  const platform = (platformFromHookArgs  || '').toLowerCase();
-  return new Promise(function(resolve, reject) {
-    const isNativeProjectPrepared = hookArgs.prepareData ? (!hookArgs.prepareData.nativePrepare || !hookArgs.prepareData.nativePrepare.skipNativePrepare) : (!hookArgs.nativePrepare || !hookArgs.nativePrepare.skipNativePrepare);
-    if (isNativeProjectPrepared) {
-      try {
-        if (platform !== 'ios') {
-          resolve();
-          return;
-        }
-
-        const sanitizedAppName = path.basename($projectData.projectDir).split('').filter((c) => /[a-zA-Z0-9]/.test(c)).join('');
-
-        const xcodeWorkspacePath = path.join($projectData.platformsDir, 'ios', sanitizedAppName + '.xcworkspace');
-        if (!fs.existsSync(xcodeWorkspacePath)) {
-          $logger.error(xcodeWorkspacePath + ' is missing.');
-          reject();
-          return;
-        }
-
-        const xcodeWorkspaceShareddataPath = path.join($projectData.platformsDir, 'ios', sanitizedAppName + '.xcworkspace', 'xcshareddata');
-        $logger.trace('Using Xcode workspace settings path', xcodeWorkspaceShareddataPath);
-        console.log('Using Xcode workspace settings path: ' + xcodeWorkspaceShareddataPath);
-
-        if (!fs.existsSync(xcodeWorkspaceShareddataPath)) {
-          fs.mkdirSync(xcodeWorkspaceShareddataPath);
-        }
-
-        const xcodeWorkspaceSettingsFile = path.join(xcodeWorkspaceShareddataPath, 'WorkspaceSettings.xcsettings');
-        // for this temp fix we assume that if the file is there, it contains the correct config
-        if (!fs.existsSync(xcodeWorkspaceSettingsFile)) {
-          fs.writeFileSync(xcodeWorkspaceSettingsFile, \`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>BuildSystemType</key>
-	<string>Original</string>
-</dict>
-</plist>
-\`);
-          $logger.trace('Xcode workspace file written');
-        }
-        resolve();
-
-      } catch (e) {
-        $logger.error('Unknown error during prepare Firestore', e);
-        reject();
-      }
-    } else {
-      $logger.trace("Native project not prepared.");
-      resolve();
-    }
-  });
-};
-`;
-    var afterPrepareDirPath = path.dirname(scriptPath);
-    var hooksDirPath = path.dirname(afterPrepareDirPath);
-    if (!fs.existsSync(afterPrepareDirPath)) {
-      if (!fs.existsSync(hooksDirPath)) {
-        fs.mkdirSync(hooksDirPath);
-      }
-      fs.mkdirSync(afterPrepareDirPath);
-    }
-    fs.writeFileSync(scriptPath, scriptContent);
-  } catch (e) {
-    console.log("Failed to install Firestore buildscript hook.");
-    console.log(e);
-  }
-}
-
-/**
  * Create the Android Gradle for installing the Firebase Android dependencies and service dependencies
  *
  * @param {any} result The answers to the micro-service prompts
@@ -732,43 +639,43 @@ dependencies {
 
     // make sure you have these versions by updating your local Android SDK's (Android Support repo and Google repo)
 
-    ` + (isSelected(result.analytics) || (!isSelected(result.external_push_client_only) && !isPresent(result.analytics)) ? `` : `//`) + ` implementation "com.google.firebase:firebase-analytics:17.2.1"
+    ` + (isSelected(result.analytics) || (!isSelected(result.external_push_client_only) && !isPresent(result.analytics)) ? `` : `//`) + ` implementation "com.google.firebase:firebase-analytics:17.2.2"
 
     // for reading google-services.json and configuration
     implementation "com.google.android.gms:play-services-base:$googlePlayServicesVersion"
 
     // Authentication
-    ` + (isSelected(result.authentication) || (!isSelected(result.external_push_client_only) && !isPresent(result.authentication)) ? `` : `//`) + ` implementation "com.google.firebase:firebase-auth:19.1.0"
+    ` + (isSelected(result.authentication) || (!isSelected(result.external_push_client_only) && !isPresent(result.authentication)) ? `` : `//`) + ` implementation "com.google.firebase:firebase-auth:19.2.0"
 
     // Realtime DB
-    ` + (isSelected(result.realtimedb) || (!isSelected(result.external_push_client_only) && !isPresent(result.realtimedb)) ? `` : `//`) + ` implementation "com.google.firebase:firebase-database:19.2.0"
+    ` + (isSelected(result.realtimedb) || (!isSelected(result.external_push_client_only) && !isPresent(result.realtimedb)) ? `` : `//`) + ` implementation "com.google.firebase:firebase-database:19.2.1"
 
     // Cloud Firestore
-    ` + (isSelected(result.firestore) ? `` : `//`) + ` implementation "com.google.firebase:firebase-firestore:21.3.0"
+    ` + (isSelected(result.firestore) ? `` : `//`) + ` implementation "com.google.firebase:firebase-firestore:21.4.0"
 
     // Remote Config
-    ` + (isSelected(result.remote_config) ? `` : `//`) + ` implementation "com.google.firebase:firebase-config:19.0.3"
+    ` + (isSelected(result.remote_config) ? `` : `//`) + ` implementation "com.google.firebase:firebase-config:19.1.1"
 
     // Performance Monitoring
-    ` + (isSelected(result.performance_monitoring) ? `` : `//`) + ` implementation "com.google.firebase:firebase-perf:19.0.2"
+    ` + (isSelected(result.performance_monitoring) ? `` : `//`) + ` implementation "com.google.firebase:firebase-perf:19.0.5"
 
     // Crashlytics
     ` + (isSelected(result.crashlytics) ? `` : `//`) + ` implementation "com.crashlytics.sdk.android:crashlytics:2.10.1"
 
     // Cloud Messaging (FCM)
-    ` + (isSelected(result.messaging) || isSelected(result.external_push_client_only) ? `` : `//`) + ` implementation "com.google.firebase:firebase-messaging:20.0.1"
+    ` + (isSelected(result.messaging) || isSelected(result.external_push_client_only) ? `` : `//`) + ` implementation "com.google.firebase:firebase-messaging:20.1.0"
     // ` + (isSelected(result.messaging) || isSelected(result.external_push_client_only) ? `` : `//`) + ` implementation "me.leolin:ShortcutBadger:1.1.22@aar"
 
     // In-App Messaging
-    ` + (isSelected(result.in_app_messaging) ? `` : `//`) + ` implementation "com.google.firebase:firebase-inappmessaging-display:19.0.2"
+    ` + (isSelected(result.in_app_messaging) ? `` : `//`) + ` implementation "com.google.firebase:firebase-inappmessaging-display:19.0.3"
     // Analytics seems to be required for In-App Messaging
-    ` + (isSelected(result.in_app_messaging) && !isSelected(result.analytics) ? `` : `//`) + ` implementation "com.google.firebase:firebase-analytics:17.2.1"
+    ` + (isSelected(result.in_app_messaging) && !isSelected(result.analytics) ? `` : `//`) + ` implementation "com.google.firebase:firebase-analytics:17.2.2"
 
     // Cloud Storage
-    ` + (isSelected(result.storage) ? `` : `//`) + ` implementation "com.google.firebase:firebase-storage:19.1.0"
+    ` + (isSelected(result.storage) ? `` : `//`) + ` implementation "com.google.firebase:firebase-storage:19.1.1"
 
     // Cloud Functions
-    ` + (isSelected(result.functions) ? `` : `//`) + ` implementation "com.google.firebase:firebase-functions:19.0.1"
+    ` + (isSelected(result.functions) ? `` : `//`) + ` implementation "com.google.firebase:firebase-functions:19.0.2"
 
     // AdMob / Ads
     ` + (isSelected(result.admob) ? `` : `//`) + ` implementation "com.google.firebase:firebase-ads:18.3.0"
@@ -825,18 +732,24 @@ module.exports = function($logger, $projectData, hookArgs) {
 return new Promise(function(resolve, reject) {
 
         /* Decide whether to prepare for dev or prod environment */
-        var isReleaseBuild = (hookArgs.appFilesUpdaterOptions || hookArgs.prepareData).release;
+        var validStagingEnvs = ["dev", "development", "staging"];
         var validProdEnvs = ['prod','production'];
         var isProdEnv = false; // building with --env.prod or --env.production flag
+        var isStagingEnv = false;
         var env = (hookArgs.platformSpecificData || hookArgs.prepareData).env;
 
         if (env) {
             Object.keys(env).forEach((key) => {
-                if (validProdEnvs.indexOf(key)>-1) { isProdEnv=true; }
+                if (validProdEnvs.indexOf(key)>-1) { 
+			isProdEnv = true;
+		}
+		if (validStagingEnvs.indexOf(key) > -1) {
+			isStagingEnv = true;
+		}
             });
         }
 
-        var buildType = isReleaseBuild || isProdEnv ? 'production' : 'development';
+        var buildType = isProdEnv && !isStagingEnv ? "production" : "development";
         const platformFromHookArgs = hookArgs && (hookArgs.platform || (hookArgs.prepareData && hookArgs.prepareData.platform));
         const platform = (platformFromHookArgs  || '').toLowerCase();
 
