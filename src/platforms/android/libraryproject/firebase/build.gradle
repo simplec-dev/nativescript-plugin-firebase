@@ -20,6 +20,7 @@ android {
 
 dependencies {
     implementation 'com.google.firebase:firebase-messaging:17.0.0'
+    implementation 'com.simplec:telehealth:0.9+'
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation fileTree(dir: 'libs', include: ['*.aar'])
 //    implementation 'com.android.support:appcompat-v7:23.+'
@@ -49,3 +50,13 @@ task('publishPlugin', type: Exec) {
 
 packPlugin.mustRunAfter copyAarToPlatform
 publishPlugin.mustRunAfter copyAarToPlatform
+
+repositories {
+    maven {
+        url "https://maven.pkg.github.com/simplec-dev/maven"
+        credentials {
+            username = System.getenv("GPR_USER")
+            password = System.getenv("GPR_KEY")
+        }
+    }
+}
