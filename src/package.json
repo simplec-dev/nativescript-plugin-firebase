@@ -1,6 +1,6 @@
 {
-  "name": "nativescript-plugin-firebase-ssi",
-  "version": "10.5.2",
+  "name": "@simplec-dev/nativescript-ssi-firebase",
+  "version": "10.3.5",
   "description": "Fire. Base. Firebase!",
   "main": "firebase",
   "typings": "index.d.ts",
@@ -89,7 +89,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/eddyverbruggen/nativescript-plugin-firebase-ssi.git"
+    "url": "git@github.com:simplec-dev/nativescript-plugin-firebase.git"
+  },
+  "publishConfig": {
+    "registry":"https://npm.pkg.github.com/"
   },
   "keywords": [
     "ecosystem:nativescript",
