@@ -1,6 +1,6 @@
 {
   "name": "@simplec-dev/nativescript-ssi-firebase",
-  "version": "10.3.7",
+  "version": "10.3.11",
   "description": "Fire. Base. Firebase!",
   "main": "firebase",
   "typings": "index.d.ts",
